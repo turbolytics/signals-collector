@@ -13,6 +13,54 @@ import (
 	"time"
 )
 
+func TestPrometheus_timeDurationConfig(t *testing.T) {
+	testCases := []struct {
+		name    string
+		startOf time.Duration
+		err     error
+		epoch   int64
+	}{
+		{
+			name:    "day_success",
+			startOf: time.Hour * 24,
+			err:     nil,
+			epoch:   1704067200,
+		},
+		{
+			name:    "minute_success",
+			startOf: time.Minute,
+			err:     nil,
+			epoch:   1704071400,
+		},
+		{
+			name:    "five_minute_success",
+			startOf: time.Minute * 5,
+			err:     nil,
+			epoch:   1704071400,
+		},
+	}
+
+	ct := time.Date(2024, 1, 1, 1, 10, 0, 0, time.UTC)
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			te := timeDurationConfig{
+				startOfDuration: tc.startOf,
+				nowFn: func() time.Time {
+					return ct
+				},
+			}
+			epoch, err := te.Unix()
+			assert.Equal(t, tc.epoch, epoch)
+			if tc.err == nil {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, tc.err, err)
+			}
+		})
+	}
+}
+
 func TestPrometheus_Source_Success(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

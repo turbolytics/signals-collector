@@ -1,9 +1,8 @@
-name: mongo.users.10s
+name: mongo_users_10s
 
 metric:
   name: core.users.total
   type: COUNT
-  grain: 10s
   tags:
     - key: env
       value: prod

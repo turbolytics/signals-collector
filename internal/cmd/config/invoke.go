@@ -3,8 +3,8 @@ package config
 import (
 	"context"
 	"github.com/spf13/cobra"
-	"github.com/turbolytics/collector/internal"
 	"github.com/turbolytics/collector/internal/collector"
+	"github.com/turbolytics/collector/internal/config"
 	"go.uber.org/zap"
 )
 
@@ -20,9 +20,9 @@ func NewInvokeCmd() *cobra.Command {
 			defer logger.Sync() // flushes buffer, if any
 
 			ctx := context.Background()
-			config, err := internal.NewConfigFromFile(
+			config, err := config.NewFromFile(
 				configPath,
-				internal.WithConfigLogger(logger),
+				config.WithLogger(logger),
 			)
 			if err != nil {
 				panic(err)

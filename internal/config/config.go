@@ -1,4 +1,4 @@
-package internal
+package config
 
 import (
 	"bytes"
@@ -19,8 +19,11 @@ import (
 	"os"
 	"path"
 	"text/template"
-	"time"
 )
+
+type validateable interface {
+	Validate() error
+}
 
 type Tag struct {
 	Key   string
@@ -30,15 +33,7 @@ type Tag struct {
 type Metric struct {
 	Name string
 	Type metrics.Type
-	// Grain specifies the aggregation of this metric. It will be used to calculate the
-	// grain datetime.
-	Grain *time.Duration
-	Tags  []Tag
-}
-
-type Schedule struct {
-	Interval *time.Duration
-	Cron     *string
+	Tags []Tag
 }
 
 type Collector struct {
@@ -58,15 +53,15 @@ type Source struct {
 	Config  map[string]any
 }
 
-type ConfigOption func(*Config)
+type Option func(*Config)
 
-func WithJustConfigValidation(validate bool) ConfigOption {
+func WithJustValidation(validate bool) Option {
 	return func(c *Config) {
 		c.validate = validate
 	}
 }
 
-func WithConfigLogger(l *zap.Logger) ConfigOption {
+func WithLogger(l *zap.Logger) Option {
 	return func(c *Config) {
 		c.logger = l
 	}
@@ -184,7 +179,7 @@ func parseTemplate(bs []byte) ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-func NewConfigsFromDir(dirname string, opts ...ConfigOption) ([]*Config, error) {
+func NewFromDir(dirname string, opts ...Option) ([]*Config, error) {
 	files, err := os.ReadDir(dirname)
 	if err != nil {
 		return nil, err
@@ -197,7 +192,7 @@ func NewConfigsFromDir(dirname string, opts ...ConfigOption) ([]*Config, error) 
 		}
 
 		n := path.Join(dirname, f.Name())
-		c, err := NewConfigFromFile(n, opts...)
+		c, err := NewFromFile(n, opts...)
 		if err != nil {
 			return nil, err
 		}
@@ -206,52 +201,36 @@ func NewConfigsFromDir(dirname string, opts ...ConfigOption) ([]*Config, error) 
 	return configs, nil
 }
 
-func NewConfigFromFile(name string, opts ...ConfigOption) (*Config, error) {
+func NewFromFile(name string, opts ...Option) (*Config, error) {
 	bs, err := os.ReadFile(name)
 	if err != nil {
 		return nil, err
 	}
-	return NewConfig(bs, opts...)
+	return New(bs, opts...)
 }
 
-type validator func(Config) error
-
-func validateMetric(c Config) error {
-	if c.Schedule.Interval != nil && (c.Schedule.Interval.Nanoseconds() != c.Metric.Grain.Nanoseconds()) {
-		return fmt.Errorf("'schedule.interval' should match 'metric.grain'")
-	}
-	return nil
-}
-
-func validateSchedule(c Config) error {
-	if c.Schedule.Interval == nil && c.Schedule.Cron == nil {
-		return fmt.Errorf("must set schedule.interval or schedule.cron")
-	}
-
-	if c.Schedule.Interval != nil && c.Schedule.Cron != nil {
-		return fmt.Errorf("must set either schedule.interval or schedule.cron")
-	}
+func defaults(c *Config) error {
+	(&c.Schedule).SetDefaults()
 
 	return nil
 }
 
 func validate(c Config) error {
-	validators := []validator{
-		validateSchedule,
-		validateMetric,
+	validators := []validateable{
+		c.Schedule,
 	}
 
-	for _, vFn := range validators {
-		if err := vFn(c); err != nil {
+	for _, v := range validators {
+		if err := v.Validate(); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// NewConfig initializes a config from yaml bytes.
-// NewConfig initializes all subtypes as well.
-func NewConfig(raw []byte, opts ...ConfigOption) (*Config, error) {
+// New initializes a config from yaml bytes.
+// New initializes all subtypes as well.
+func New(raw []byte, opts ...Option) (*Config, error) {
 	var conf Config
 
 	for _, opt := range opts {
@@ -264,6 +243,10 @@ func NewConfig(raw []byte, opts ...ConfigOption) (*Config, error) {
 	}
 
 	if err := yaml.Unmarshal(bs, &conf); err != nil {
+		return nil, err
+	}
+
+	if err := defaults(&conf); err != nil {
 		return nil, err
 	}
 

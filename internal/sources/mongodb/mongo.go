@@ -2,7 +2,6 @@ package mongodb
 
 import (
 	"context"
-	"fmt"
 	"github.com/mitchellh/mapstructure"
 	"github.com/turbolytics/collector/internal/metrics"
 	"go.mongodb.org/mongo-driver/bson"
@@ -43,7 +42,6 @@ func (m *Mongo) Source(ctx context.Context) ([]*metrics.Metric, error) {
 		return nil, err
 	}
 
-	fmt.Println(results)
 	var rs []map[string]any
 	for _, r := range results {
 		rs = append(rs, r)

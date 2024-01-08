@@ -3,9 +3,9 @@ package cmd
 import (
 	"context"
 	"github.com/spf13/cobra"
-	"github.com/turbolytics/collector/internal"
 	"github.com/turbolytics/collector/internal/collector"
 	"github.com/turbolytics/collector/internal/collector/service"
+	"github.com/turbolytics/collector/internal/config"
 	"github.com/turbolytics/collector/internal/obs"
 	otelruntime "go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel"
@@ -60,9 +60,9 @@ func NewRunCmd() *cobra.Command {
 			)
 
 			// initialize all collectors in the path
-			confs, err := internal.NewConfigsFromDir(
+			confs, err := config.NewFromDir(
 				configDir,
-				internal.WithConfigLogger(logger),
+				config.WithLogger(logger),
 			)
 			if err != nil {
 				panic(err)

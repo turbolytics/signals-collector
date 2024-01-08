@@ -27,11 +27,35 @@ func WithLogger(l *zap.Logger) Option {
 	}
 }
 
+type timeDurationConfig struct {
+	StartOf string `mapstructure:"start_of"`
+
+	startOfDuration time.Duration
+	nowFn           func() time.Time
+}
+
+func (td *timeDurationConfig) init() error {
+	td.nowFn = func() time.Time {
+		return time.Now().UTC()
+	}
+	d, err := time.ParseDuration(td.StartOf)
+	if err != nil {
+		return err
+	}
+	td.startOfDuration = d
+	return nil
+}
+
+func (td timeDurationConfig) Unix() (int64, error) {
+	ct := td.nowFn()
+	return ct.Truncate(td.startOfDuration).Unix(), nil
+}
+
 type config struct {
-	SQL            string
-	Query          string
-	URI            string
-	TimeExpression string `mapstructure:"time_expression"`
+	SQL          string
+	Query        string
+	URI          string
+	TimeDuration *timeDurationConfig `mapstructure:"time_duration"`
 
 	url *url.URL
 }
@@ -82,23 +106,13 @@ func (p *Prometheus) promMetrics(ctx context.Context, uri string) (*apiResponse,
 	return &apiResp, nil
 }
 
-func queryTimeUnix(qTime string) (int64, error) {
-	switch qTime {
-	case "$start_of_day":
-		ct := time.Now().UTC()
-		startOfDay := time.Date(ct.Year(), ct.Month(), ct.Day(), 0, 0, 0, 0, ct.Location())
-		return startOfDay.Unix(), nil
-	}
-	return 0, fmt.Errorf("query time %q not supported, currently supports($start_of_day)", qTime)
-}
-
 func (p *Prometheus) Source(ctx context.Context) ([]*metrics.Metric, error) {
 	u, _ := url.Parse(p.config.url.String())
 	q := u.Query()
 	q.Add("query", p.config.Query)
 
-	if p.config.TimeExpression != "" {
-		qt, err := queryTimeUnix(p.config.TimeExpression)
+	if p.config.TimeDuration != nil {
+		qt, err := p.config.TimeDuration.Unix()
 		if err != nil {
 			return nil, err
 		}
@@ -107,7 +121,6 @@ func (p *Prometheus) Source(ctx context.Context) ([]*metrics.Metric, error) {
 	}
 
 	u.RawQuery = q.Encode()
-	fmt.Println(u.String())
 
 	promMetrics, err := p.promMetrics(ctx, u.String())
 	if err != nil {
@@ -208,6 +221,12 @@ func NewFromGenericConfig(m map[string]any, opts ...Option) (*Prometheus, error)
 		return nil, err
 	}
 	conf.url = u
+
+	if conf.TimeDuration != nil {
+		if err := conf.TimeDuration.init(); err != nil {
+			return nil, err
+		}
+	}
 
 	p := &Prometheus{
 		config: conf,

@@ -1,9 +1,8 @@
-name: postgres.users.total.30s
+name: postgres_users_total_30s
 
 metric:
   name: core.users.total
   type: COUNT
-  grain: 30s
   tags:
     - key: env
       value: prod

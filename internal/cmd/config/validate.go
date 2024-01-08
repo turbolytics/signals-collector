@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 	"github.com/spf13/cobra"
-	"github.com/turbolytics/collector/internal"
+	"github.com/turbolytics/collector/internal/config"
 )
 
 func NewValidateCmd() *cobra.Command {
@@ -15,9 +15,9 @@ func NewValidateCmd() *cobra.Command {
 		Long:  ``,
 		Run: func(cmd *cobra.Command, args []string) {
 			fmt.Println(configPath)
-			_, err := internal.NewConfigFromFile(
+			_, err := config.NewFromFile(
 				configPath,
-				internal.WithJustConfigValidation(true),
+				config.WithJustValidation(true),
 			)
 			if err != nil {
 				panic(err)

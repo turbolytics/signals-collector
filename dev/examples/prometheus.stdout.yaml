@@ -1,25 +1,26 @@
-name: service.availability.24h
+name: service_availability_5m
 
 metric:
-  name: service.availability.24h
+  name: service.availability.5m
   type: COUNT
-  grain: 24h
   tags:
     - key: env
       value: prod
 
 schedule:
-  interval: 24h
+  interval: 5m
+  strategy: stateful
 
 source:
   type: prometheus
   config:
     uri: 'http://{{ getEnvOrDefault "SC_PROM_HOST" "localhost" }}:9090/api/v1/query'
-    query: 'increase(collector_invoke_count_total[24h])'
-    time_expression: $start_of_day
+    query: 'sum by (result_status_code) (increase(collector_invoke_count_total[5m]))'
+    time_duration:
+      start_of: 5m
     sql: |
       SELECT
-        metric->>'collector_name' as service,
+        'signals-collector' as service,
         CASE
           WHEN metric->>'result_status_code' = 'OK'
           THEN false

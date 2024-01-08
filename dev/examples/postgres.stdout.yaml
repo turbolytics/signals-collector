@@ -1,9 +1,8 @@
-name: postgres.users.total.1m
+name: postgres_users_total_1m
 
 metric:
   name: core.users.total
   type: COUNT
-  grain: 1m
   tags:
     - key: env
       value: prod

@@ -1,4 +1,4 @@
-package internal
+package config
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -11,7 +11,7 @@ var exampleDir string
 
 func init() {
 	currDir, _ := os.Getwd()
-	exampleDir = path.Join(currDir, "..", "dev", "examples")
+	exampleDir = path.Join(currDir, "..", "..", "dev", "examples")
 }
 
 func TestNewConfigFromFile(t *testing.T) {
@@ -28,9 +28,9 @@ func TestNewConfigFromFile(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.fileName, func(t *testing.T) {
 			fPath := path.Join(exampleDir, tc.fileName)
-			_, err := NewConfigFromFile(
+			_, err := NewFromFile(
 				fPath,
-				WithJustConfigValidation(true),
+				WithJustValidation(true),
 			)
 			assert.NoError(t, err)
 		})
@@ -38,10 +38,9 @@ func TestNewConfigFromFile(t *testing.T) {
 }
 
 func TestNewConfigsFromDir(t *testing.T) {
-	_, err := NewConfigsFromDir(
+	_, err := NewFromDir(
 		exampleDir,
-		WithJustConfigValidation(true),
+		WithJustValidation(true),
 	)
 	assert.NoError(t, err)
-
 }
